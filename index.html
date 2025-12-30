@@ -1,157 +1,237 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloudmorphic | The Future of UI</title>
-    <style>
-        :root {
-            --glass: rgba(255, 255, 255, 0.1);
-            --border: rgba(255, 255, 255, 0.2);
-            --accent: #00aaff;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cloudmorphic - The Future Of UI Libraries</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f0f17;
+      --surface: #161624;
+      --accent: #7c5eff;
+      --accent-dark: #5e3fd9;
+      --text: #e0e0ff;
+      --text-secondary: #a0a0cc;
+      --border: #2a2a44;
+      --glow: rgba(124, 94, 255, 0.25);
+    }
 
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: radial-gradient(circle at top right, #1e2a4a, #0f0f14);
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
-        }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-        /* Animated Background Clouds */
-        .bg-glow {
-            position: absolute;
-            width: 400px;
-            height: 400px;
-            background: var(--accent);
-            filter: blur(150px);
-            border-radius: 50%;
-            opacity: 0.2;
-            z-index: -1;
-            animation: float 10s infinite alternate;
-        }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(124,94,255,0.08) 0%, transparent 25%),
+        radial-gradient(circle at 90% 80%, rgba(124,94,255,0.06) 0%, transparent 35%);
+    }
 
-        @keyframes float {
-            from { transform: translate(-50%, -50%); }
-            to { transform: translate(20%, 20%); }
-        }
+    .container {
+      max-width: 780px;
+      margin: 0 auto;
+    }
 
-        /* Glass Container */
-        .container {
-            background: var(--glass);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            padding: 40px;
-            width: 90%;
-            max-width: 500px;
-            text-align: center;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
-            animation: fadeIn 1s ease-out;
-        }
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
 
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            letter-spacing: -1px;
-        }
+    h1 {
+      font-size: 2.8rem;
+      font-weight: 600;
+      background: linear-gradient(90deg, #c0b6ff, #7c5eff, #a78bff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+    }
 
-        p {
-            color: #b0b0b0;
-            margin-bottom: 30px;
-        }
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      margin-top: 0.5rem;
+    }
 
-        /* The Loadstring Box */
-        .loadstring-box {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 15px;
-            border-radius: 12px;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 13px;
-            color: #00d2ff;
-            border: 1px solid var(--border);
-            margin-bottom: 20px;
-            position: relative;
-            cursor: pointer;
-            transition: transform 0.2s;
-            word-break: break-all;
-        }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(124,94,255,0.08) inset;
+      position: relative;
+      overflow: hidden;
+    }
 
-        .loadstring-box:hover {
-            transform: scale(1.02);
-            background: rgba(0, 0, 0, 0.4);
-        }
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(124,94,255,0.06), transparent 60%);
+      pointer-events: none;
+    }
 
-        /* Button Style */
-        .btn-copy {
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 12px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.3s;
-            box-shadow: 0 4px 15px rgba(0, 170, 255, 0.4);
-        }
+    .loadstring-box {
+      background: #0a0a14;
+      border: 1px solid #2a2a44;
+      border-radius: 10px;
+      padding: 1.25rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.95rem;
+      color: #c5c5ff;
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin: 1.5rem 0;
+      position: relative;
+    }
 
-        .btn-copy:hover {
-            background: #0088cc;
-            transform: translateY(-2px);
-        }
+    .copy-btn {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.9rem;
+    }
 
-        .btn-copy:active {
-            transform: translateY(0);
-        }
+    .copy-btn:hover {
+      background: var(--accent-dark);
+      transform: translateY(-1px);
+    }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+    .copy-btn.copied {
+      background: #4caf50;
+    }
 
-        .copied-text {
-            display: none;
-            font-size: 12px;
-            color: #00ffaa;
-            margin-top: 10px;
-        }
-    </style>
+    .options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      margin: 1.5rem 0;
+    }
+
+    .option-group {
+      flex: 1;
+      min-width: 220px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+
+    input[type="text"], select {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: #111122;
+      border: 1px solid #2a2a44;
+      border-radius: 8px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.95rem;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 3rem;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 640px) {
+      h1 { font-size: 2.2rem; }
+      .card { padding: 1.5rem; }
+      .options { flex-direction: column; gap: 1.25rem; }
+    }
+  </style>
 </head>
 <body>
+  <div class="container">
+    <header>
+      <h1>Cloudmorphic</h1>
+      <div class="subtitle">Custom Loadstring Generator</div>
+    </header>
 
-    <div class="bg-glow"></div>
+    <div class="card">
+      <h2 style="margin-bottom: 1.25rem; font-size: 1.4rem;">Your Loadstring</h2>
+      
+      <div class="loadstring-box" id="loadstringBox">
+loadstring(game:HttpGet("https://raw.githubusercontent.com/bahcutmp4-web/cloudmorphic.com/main/library.lua", true))()
+      </div>
 
-    <div class="container">
-        <h1>☁️ Cloudmorphic</h1>
-        <p>The cleanest UI Library for Roblox Mobile.</p>
+      <button class="copy-btn" id="copyBtn">Copy</button>
 
-        <div class="loadstring-box" id="loadstring">
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/bahcutmp4-web/cloudmorphic.com/main/library.lua"))()
+      <div class="options">
+        <div class="option-group">
+          <label for="urlInput">Library URL</label>
+          <input type="text" id="urlInput" value="https://raw.githubusercontent.com/bahcutmp4-web/cloudmorphic.com/main/library.lua" placeholder="https://raw.githubusercontent.com/..."/>
         </div>
 
-        <button class="btn-copy" onclick="copyCode()">Copy Loadstring</button>
-        <div class="copied-text" id="status">Copied to clipboard!</div>
+        <div class="option-group">
+          <label for="cacheBust">Cache Busting</label>
+          <select id="cacheBust">
+            <option value="true">Enabled (recommended during dev)</option>
+            <option value="false">Disabled (faster after stable)</option>
+          </select>
+        </div>
+      </div>
+
+      <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 1.5rem;">
+        Paste this line at the top of your script in your favorite executor.
+      </p>
     </div>
 
-    <script>
-        function copyCode() {
-            const code = document.getElementById("loadstring").innerText;
-            navigator.clipboard.writeText(code);
-            
-            const status = document.getElementById("status");
-            status.style.display = "block";
-            
-            setTimeout(() => {
-                status.style.display = "none";
-            }, 2000);
-        }
-    </script>
+    <div class="footer">
+      Cloudmorphic UI Library • Last updated December 2025
+    </div>
+  </div>
+
+  <script>
+    const urlInput = document.getElementById('urlInput');
+    const cacheSelect = document.getElementById('cacheBust');
+    const loadstringBox = document.getElementById('loadstringBox');
+    const copyBtn = document.getElementById('copyBtn');
+
+    function updateLoadstring() {
+      const url = urlInput.value.trim();
+      const cache = cacheSelect.value === 'true' ? ', true' : '';
+      const code = `loadstring(game:HttpGet("\( {url}" \){cache}))()`;
+      loadstringBox.textContent = code;
+    }
+
+    urlInput.addEventListener('input', updateLoadstring);
+    cacheSelect.addEventListener('change', updateLoadstring);
+
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(loadstringBox.textContent).then(() => {
+        copyBtn.textContent = 'Copied!';
+        copyBtn.classList.add('copied');
+        setTimeout(() => {
+          copyBtn.textContent = 'Copy';
+          copyBtn.classList.remove('copied');
+        }, 2000);
+      });
+    });
+
+    // Initial render
+    updateLoadstring();
+  </script>
 </body>
 </html>
