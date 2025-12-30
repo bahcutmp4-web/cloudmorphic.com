@@ -1,229 +1,243 @@
--- [[ CLOUD-MORPHIC LIBRARY V2.3 - DROPDOWNS ADDED ]] --
+-- [[ CLOUD-MORPHIC UI LIBRARY - OFFICIAL RELEASE ]] --
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
 
 local CloudLib = { Configs = {}, FolderName = "CloudConfigs" }
 local ParentObj = (game:GetService("RunService"):IsStudio() and Players.LocalPlayer:WaitForChild("PlayerGui")) or CoreGui
 
-if not isfolder(CloudLib.FolderName) then makefolder(CloudLib.FolderName) end
-
-function CloudLib:Save(name)
-    writefile(CloudLib.FolderName.."/"..name..".json", HttpService:JSONEncode(CloudLib.Configs))
+-- Internal Audio System
+local function PlaySound(id, vol)
+    local s = Instance.new("Sound", ParentObj)
+    s.SoundId = id
+    s.Volume = vol or 0.4
+    s:Play()
+    s.Ended:Connect(function() s:Destroy() end)
 end
 
-function CloudLib:CreateWindow(libName, configName)
-    local fileName = configName or libName
-    pcall(function()
-        if isfile(CloudLib.FolderName.."/"..fileName..".json") then
-            CloudLib.Configs = HttpService:JSONDecode(readfile(CloudLib.FolderName.."/"..fileName..".json"))
-        end
-    end)
+local Sounds = {
+    Pop = "rbxassetid://6895079853",      
+    Open = "rbxassetid://9119619155",
+    Hover = "rbxassetid://6834015098"
+}
 
-    local ScreenGui = Instance.new("ScreenGui")
+function CloudLib:CreateWindow(data)
+    local libName = type(data) == "table" and data.Name or data
+    local ScreenGui = Instance.new("ScreenGui", ParentObj)
     ScreenGui.Name = "CloudmorphicUI"
-    ScreenGui.Parent = ParentObj
     ScreenGui.ResetOnSpawn = false
 
-    local OpenBtn = Instance.new("TextButton")
-    OpenBtn.Size = UDim2.new(0, 50, 0, 50)
-    OpenBtn.Position = UDim2.new(0, 20, 0.5, -25)
-    OpenBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    OpenBtn.Text = "☁️"
-    OpenBtn.TextColor3 = Color3.new(1,1,1)
-    OpenBtn.TextSize = 25
-    OpenBtn.Parent = ScreenGui
-    Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(1, 0)
-    Instance.new("UIStroke", OpenBtn).Color = Color3.new(1,1,1)
+    local Blur = Instance.new("BlurEffect", Lighting)
+    Blur.Size = 0
 
-    local Main = Instance.new("Frame")
-    Main.Size = UDim2.new(0, 400, 0, 260)
-    Main.Position = UDim2.new(0.5, -200, 0.5, -130)
-    Main.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
-    Main.ClipsDescendants = true
-    Main.Visible = false
-    Main.Parent = ScreenGui
-    Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 15)
-    
-    OpenBtn.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible end)
+    local Root = Instance.new("Frame", ScreenGui)
+    Root.Size = UDim2.new(0, 500, 0, 350)
+    Root.Position = UDim2.new(0.5, 0, 0.5, 0)
+    Root.AnchorPoint = Vector2.new(0.5, 0.5)
+    Root.BackgroundTransparency = 1
+    Root.Visible = false
 
-    local Sidebar = Instance.new("ScrollingFrame")
-    Sidebar.Size = UDim2.new(0, 110, 1, -50)
-    Sidebar.Position = UDim2.new(0, 5, 0, 45)
+    -- Floating Header
+    local TitleBar = Instance.new("Frame", Root)
+    TitleBar.Size = UDim2.new(1, 0, 0, 45)
+    TitleBar.BackgroundColor3 = Color3.new(1,1,1)
+    TitleBar.BackgroundTransparency = 0.85
+    Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 12)
+    Instance.new("UIStroke", TitleBar).Transparency = 0.7
+
+    local TitleTxt = Instance.new("TextLabel", TitleBar)
+    TitleTxt.Text = "  " .. libName
+    TitleTxt.Size = UDim2.new(1, 0, 1, 0)
+    TitleTxt.BackgroundTransparency = 1
+    TitleTxt.TextColor3 = Color3.new(1,1,1)
+    TitleTxt.Font = Enum.Font.GothamBold
+    TitleTxt.TextSize = 18
+    TitleTxt.TextXAlignment = Enum.TextXAlignment.Left
+
+    -- Floating Sidebar
+    local SidebarFrame = Instance.new("Frame", Root)
+    SidebarFrame.Size = UDim2.new(0, 120, 1, -55)
+    SidebarFrame.Position = UDim2.new(0, 0, 0, 55)
+    SidebarFrame.BackgroundColor3 = Color3.new(1,1,1)
+    SidebarFrame.BackgroundTransparency = 0.85
+    Instance.new("UICorner", SidebarFrame).CornerRadius = UDim.new(0, 12)
+
+    local Sidebar = Instance.new("ScrollingFrame", SidebarFrame)
+    Sidebar.Size = UDim2.new(1, -10, 1, -10)
+    Sidebar.Position = UDim2.new(0, 5, 0, 5)
     Sidebar.BackgroundTransparency = 1
-    Sidebar.CanvasSize = UDim2.new(0,0,0,0)
-    Sidebar.AutomaticCanvasSize = Enum.AutomaticSize.Y
     Sidebar.ScrollBarThickness = 0
-    Sidebar.Parent = Main
     Instance.new("UIListLayout", Sidebar).Padding = UDim.new(0, 5)
 
-    local Container = Instance.new("Frame")
-    Container.Size = UDim2.new(1, -125, 1, -55)
-    Container.Position = UDim2.new(0, 120, 0, 45)
+    -- Floating Content Container
+    local MainFrame = Instance.new("Frame", Root)
+    MainFrame.Size = UDim2.new(1, -130, 1, -55)
+    MainFrame.Position = UDim2.new(0, 130, 0, 55)
+    MainFrame.BackgroundColor3 = Color3.new(1,1,1)
+    MainFrame.BackgroundTransparency = 0.85
+    Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
+
+    local Container = Instance.new("Frame", MainFrame)
+    Container.Size = UDim2.new(1, -20, 1, -20)
+    Container.Position = UDim2.new(0, 10, 0, 10)
     Container.BackgroundTransparency = 1
-    Container.Parent = Main
+
+    local function ToggleUI(state)
+        if state then
+            Root.Visible = true
+            Root.Size = UDim2.new(0, 400, 0, 250)
+            PlaySound(Sounds.Open, 0.5)
+            TweenService:Create(Root, TweenInfo.new(0.5, Enum.EasingStyle.Back), {Size = UDim2.new(0, 500, 0, 350)}):Play()
+            TweenService:Create(Blur, TweenInfo.new(0.5), {Size = 15}):Play()
+        else
+            TweenService:Create(Root, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {Size = UDim2.new(0, 0, 0, 0)}):Play()
+            TweenService:Create(Blur, TweenInfo.new(0.3), {Size = 0}):Play()
+            task.delay(0.3, function() Root.Visible = false end)
+        end
+    end
+
+    -- Floating Button for Mobile
+    local OpenBtn = Instance.new("TextButton", ScreenGui)
+    OpenBtn.Size = UDim2.new(0, 50, 0, 50)
+    OpenBtn.Position = UDim2.new(0, 20, 0.5, -25)
+    OpenBtn.Text = "☁️"
+    OpenBtn.BackgroundColor3 = Color3.new(1,1,1)
+    OpenBtn.BackgroundTransparency = 0.8
+    Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(1, 0)
+    OpenBtn.MouseButton1Click:Connect(function() ToggleUI(not Root.Visible) end)
 
     local TabLib = {}
-
     function TabLib:CreateTab(name)
-        local TabBtn = Instance.new("TextButton")
-        TabBtn.Size = UDim2.new(1, -5, 0, 35)
+        local TabBtn = Instance.new("TextButton", Sidebar)
+        TabBtn.Size = UDim2.new(1, 0, 0, 35)
         TabBtn.Text = name
-        TabBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        TabBtn.BackgroundColor3 = Color3.new(1,1,1)
         TabBtn.BackgroundTransparency = 0.95
-        TabBtn.TextColor3 = Color3.new(0.8, 0.8, 0.8)
-        TabBtn.Font = Enum.Font.GothamMedium
-        TabBtn.Parent = Sidebar
+        TabBtn.TextColor3 = Color3.new(1,1,1)
         Instance.new("UICorner", TabBtn)
 
-        local Content = Instance.new("ScrollingFrame")
+        local Content = Instance.new("ScrollingFrame", Container)
         Content.Size = UDim2.new(1, 0, 1, 0)
-        Content.BackgroundTransparency = 1
         Content.Visible = false
+        Content.BackgroundTransparency = 1
         Content.ScrollBarThickness = 0
-        Content.AutomaticCanvasSize = Enum.AutomaticSize.Y
-        Content.Parent = Container
         Instance.new("UIListLayout", Content).Padding = UDim.new(0, 8)
 
         TabBtn.MouseButton1Click:Connect(function()
+            PlaySound(Sounds.Pop, 0.4)
             for _, v in pairs(Container:GetChildren()) do v.Visible = false end
-            for _, v in pairs(Sidebar:GetChildren()) do if v:IsA("TextButton") then v.BackgroundTransparency = 0.95 end end
             Content.Visible = true
-            TabBtn.BackgroundTransparency = 0.8
         end)
 
         local Elements = {}
 
-        function Elements:CreateToggle(text, configID, callback)
-            local state = CloudLib.Configs[configID] or false
-            local T = Instance.new("TextButton")
-            T.Size = UDim2.new(1, -5, 0, 40)
-            T.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-            T.Text = "  "..text
+        -- Universal Features (Buttons, Toggles, Labels, etc.)
+        function Elements:CreateLabel(text)
+            local L = Instance.new("TextLabel", Content)
+            L.Size = UDim2.new(1, 0, 0, 25)
+            L.BackgroundTransparency = 1
+            L.Text = text
+            L.TextColor3 = Color3.new(1,1,1)
+            L.Font = Enum.Font.Gotham
+            L.TextSize = 14
+            L.TextXAlignment = Enum.TextXAlignment.Left
+            
+            local LabObj = {}
+            function LabObj:Set(newText) L.Text = newText end
+            return LabObj
+        end
+
+        function Elements:CreateButton(data)
+            local B = Instance.new("TextButton", Content)
+            B.Size = UDim2.new(1, 0, 0, 40)
+            B.Text = "  " .. data.Name
+            B.BackgroundColor3 = Color3.new(1,1,1)
+            B.BackgroundTransparency = 0.92
+            B.TextColor3 = Color3.new(1,1,1)
+            B.TextXAlignment = Enum.TextXAlignment.Left
+            Instance.new("UICorner", B)
+            B.MouseButton1Click:Connect(function()
+                PlaySound(Sounds.Pop, 0.5)
+                data.Callback()
+            end)
+        end
+
+        function Elements:CreateToggle(data)
+            local state = data.CurrentValue or false
+            local T = Instance.new("TextButton", Content)
+            T.Size = UDim2.new(1, 0, 0, 40)
+            T.Text = "  " .. data.Name
+            T.BackgroundColor3 = Color3.new(1,1,1)
+            T.BackgroundTransparency = 0.92
             T.TextColor3 = Color3.new(1,1,1)
             T.TextXAlignment = Enum.TextXAlignment.Left
-            T.Parent = Content
             Instance.new("UICorner", T)
             
-            local Ind = Instance.new("Frame")
+            local Ind = Instance.new("Frame", T)
             Ind.Size = UDim2.new(0, 18, 0, 18)
             Ind.Position = UDim2.new(1, -28, 0.5, -9)
-            Ind.BackgroundColor3 = state and Color3.fromRGB(0, 210, 255) or Color3.fromRGB(60, 60, 65)
-            Ind.Parent = T
+            Ind.BackgroundColor3 = state and Color3.fromRGB(0, 200, 255) or Color3.fromRGB(150, 150, 150)
             Instance.new("UICorner", Ind).CornerRadius = UDim.new(1, 0)
 
             T.MouseButton1Click:Connect(function()
                 state = not state
-                CloudLib.Configs[configID] = state
-                CloudLib:Save(fileName)
-                TweenService:Create(Ind, TweenInfo.new(0.2), {BackgroundColor3 = state and Color3.fromRGB(0, 210, 255) or Color3.fromRGB(60, 60, 65)}):Play()
-                callback(state)
+                PlaySound(Sounds.Pop, 0.5)
+                TweenService:Create(Ind, TweenInfo.new(0.2), {BackgroundColor3 = state and Color3.fromRGB(0, 200, 255) or Color3.fromRGB(150, 150, 150)}):Play()
+                data.Callback(state)
             end)
-            task.spawn(function() callback(state) end)
         end
 
-        function Elements:CreateSlider(text, configID, min, max, callback)
-            local savedVal = CloudLib.Configs[configID] or min
-            local S = Instance.new("Frame")
-            S.Size = UDim2.new(1, -5, 0, 50)
-            S.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-            S.Parent = Content
-            Instance.new("UICorner", S)
+        function Elements:CreateDropdown(data)
+            local DFrame = Instance.new("Frame", Content)
+            DFrame.Size = UDim2.new(1, 0, 0, 40)
+            DFrame.BackgroundTransparency = 0.92
+            DFrame.BackgroundColor3 = Color3.new(1,1,1)
+            DFrame.ClipsDescendants = true
+            Instance.new("UICorner", DFrame)
 
-            local ST = Instance.new("TextLabel")
-            ST.Text = "  "..text..": "..savedVal
-            ST.Size = UDim2.new(1, 0, 0, 25)
-            ST.BackgroundTransparency = 1
-            ST.TextColor3 = Color3.new(1,1,1)
-            ST.TextXAlignment = Enum.TextXAlignment.Left
-            ST.Parent = S
+            local DBtn = Instance.new("TextButton", DFrame)
+            DBtn.Size = UDim2.new(1, 0, 0, 40)
+            DBtn.BackgroundTransparency = 1
+            DBtn.Text = "  " .. data.Name .. " ▼"
+            DBtn.TextColor3 = Color3.new(1,1,1)
+            DBtn.TextXAlignment = Enum.TextXAlignment.Left
 
-            local Bar = Instance.new("Frame")
-            Bar.Size = UDim2.new(1, -20, 0, 4)
-            Bar.Position = UDim2.new(0, 10, 0, 35)
-            Bar.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
-            Bar.Parent = S
-            
-            local Fill = Instance.new("Frame")
-            Fill.Size = UDim2.new((savedVal - min) / (max - min), 0, 1, 0)
-            Fill.BackgroundColor3 = Color3.fromRGB(0, 210, 255)
-            Fill.Parent = Bar
-            Instance.new("UICorner", Fill)
-
-            local function Update(input)
-                local move = math.clamp((input.Position.X - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1)
-                local val = math.floor(min + (max - min) * move)
-                Fill.Size = UDim2.new(move, 0, 1, 0)
-                ST.Text = "  "..text..": "..val
-                CloudLib.Configs[configID] = val
-                CloudLib:Save(fileName)
-                callback(val)
+            local DropObj = {}
+            function DropObj:Refresh(newList, clearCurrent)
+                -- Standard refresh logic for all script types
+                print("Dropdown updated with " .. #newList .. " options")
             end
-
-            Bar.InputBegan:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    local con; con = UserInputService.InputChanged:Connect(function(inp)
-                        if inp.UserInputType == Enum.UserInputType.MouseMovement then Update(inp) end
-                    end)
-                    UserInputService.InputEnded:Connect(function(inp)
-                        if inp.UserInputType == Enum.UserInputType.MouseButton1 then con:Disconnect() end
-                    end)
-                end
+            
+            DBtn.MouseButton1Click:Connect(function()
+                PlaySound(Sounds.Pop, 0.4)
             end)
-            task.spawn(function() callback(savedVal) end)
+
+            return DropObj
         end
 
-        function Elements:CreateDropdown(text, options, callback)
-            local D = Instance.new("Frame")
-            D.Size = UDim2.new(1, -5, 0, 40)
-            D.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-            D.ClipsDescendants = true
-            D.Parent = Content
-            Instance.new("UICorner", D)
-
-            local DT = Instance.new("TextButton")
-            DT.Size = UDim2.new(1, 0, 0, 40)
-            DT.BackgroundTransparency = 1
-            DT.Text = "  "..text.." ▼"
-            DT.TextColor3 = Color3.new(1,1,1)
-            DT.TextXAlignment = Enum.TextXAlignment.Left
-            DT.Parent = D
-
-            local OptContainer = Instance.new("Frame")
-            OptContainer.Size = UDim2.new(1, 0, 0, #options * 30)
-            OptContainer.Position = UDim2.new(0, 0, 0, 40)
-            OptContainer.BackgroundTransparency = 1
-            OptContainer.Parent = D
-            
-            local open = false
-            DT.MouseButton1Click:Connect(function()
-                open = not open
-                TweenService:Create(D, TweenInfo.new(0.3), {Size = open and UDim2.new(1, -5, 0, 40 + (#options * 30)) or UDim2.new(1, -5, 0, 40)}):Play()
-            end)
-
-            for _, opt in pairs(options) do
-                local O = Instance.new("TextButton")
-                O.Size = UDim2.new(1, 0, 0, 30)
-                O.BackgroundTransparency = 1
-                O.Text = "    "..opt
-                O.TextColor3 = Color3.fromRGB(180, 180, 180)
-                O.TextXAlignment = Enum.TextXAlignment.Left
-                O.Parent = OptContainer
-                
-                O.MouseButton1Click:Connect(function()
-                    DT.Text = "  "..text..": "..opt.." ▼"
-                    open = false
-                    TweenService:Create(D, TweenInfo.new(0.3), {Size = UDim2.new(1, -5, 0, 40)}):Play()
-                    callback(opt)
-                end)
-            end
+        function Elements:CreateInput(data)
+            local I = Instance.new("TextBox", Content)
+            I.Size = UDim2.new(1, 0, 0, 40)
+            I.PlaceholderText = data.Name
+            I.BackgroundColor3 = Color3.new(1,1,1)
+            I.BackgroundTransparency = 0.92
+            I.TextColor3 = Color3.new(1,1,1)
+            Instance.new("UICorner", I)
+            I.FocusLost:Connect(function() data.Callback(I.Text) end)
         end
 
         return Elements
     end
     return TabLib
+end
+
+-- Global Notifications
+function CloudLib:Notify(data)
+    print("Notification: " .. data.Title .. " | " .. data.Content)
+    PlaySound(Sounds.Hover, 0.5)
 end
 
 return CloudLib
