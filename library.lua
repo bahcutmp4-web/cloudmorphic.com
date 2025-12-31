@@ -1,448 +1,313 @@
 --[[
-    ☁️ CLOUD LIBRARY V3 - UNIVERSAL EDITION
-    Compatible: Delta, Codex, Arceus X, Wave, Solara, Electron, Studio
-    Features: Glassmorphism, Mobile Toggle, Spring Animations
+    ☁️ CLOUD LIBRARY V4.1 - RAYFIELD TOGGLE EDITION
+    Style: Floating Islands (Deconstructed UI)
+    Toggle: Top-Screen Capsule (Hidden when Open)
+    Texture: Faux-Reflective Frosted Glass
 ]]
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 local Library = {}
 local UI = nil
-local MainFrame = nil
-local ToggleButton = nil
 
---// 1. UNIVERSAL PARENTING FUNCTION
--- This ensures it works on EVERY executor by checking available security levels
+--// 1. UNIVERSAL PARENTING
 local function GetSafeGuiRoot()
-	local success, result = pcall(function()
-		return gethui() -- Standard for modern executors (Wave, Solara, Synapse V3)
-	end)
+	local success, result = pcall(function() return gethui() end)
 	if success and result then return result end
-
-	success, result = pcall(function()
-		return game:GetService("CoreGui") -- Old standard (Delta, some android execs)
-	end)
+	success, result = pcall(function() return game:GetService("CoreGui") end)
 	if success and result then return result end
-
-	return LocalPlayer:WaitForChild("PlayerGui") -- Fallback for Studio / weak executors
+	return LocalPlayer:WaitForChild("PlayerGui")
 end
 
---// THEME CONSTANTS
+--// 2. THEME & GLASS SHADERS
 local THEME = {
-	GlassColor = Color3.fromRGB(200, 225, 255),
-	GlassTransparency = 0.45,
-	SidebarColor = Color3.fromRGB(255, 255, 255),
-	SidebarTransparency = 0.9,
+	GlassColor = Color3.fromRGB(220, 240, 255),
+	GlassTransparency = 0.6,
+	StrokeColor = Color3.fromRGB(255, 255, 255),
+	StrokeTransparency = 0.2,
+	AccentColor = Color3.fromRGB(164, 218, 255), 
 	TextColor = Color3.fromRGB(255, 255, 255),
-	TextSubColor = Color3.fromRGB(210, 240, 255),
-	AccentColor = Color3.fromRGB(130, 190, 255), 
-	ElementColor = Color3.fromRGB(255, 255, 255),
-	ElementTransparency = 0.85,
 	Font = Enum.Font.GothamMedium,
 	FontBold = Enum.Font.GothamBold
 }
 
---// ANIMATION UTILS
-local function AddRipple(Button)
-	spawn(function()
-		local Ripple = Instance.new("ImageLabel")
-		Ripple.Name = "Ripple"
-		Ripple.Parent = Button
-		Ripple.BackgroundTransparency = 1
-		Ripple.BorderSizePixel = 0
-		Ripple.Image = "rbxassetid://2708891598"
-		Ripple.ImageColor3 = Color3.new(1,1,1)
-		Ripple.ImageTransparency = 0.8
-		Ripple.ScaleType = Enum.ScaleType.Fit
-		
-		local Mouse = LocalPlayer:GetMouse()
-		local AbsPos = Button.AbsolutePosition
-		local AbsSize = Button.AbsoluteSize
-		
-		local X = Mouse.X - AbsPos.X
-		local Y = Mouse.Y - AbsPos.Y
-		
-		Ripple.Position = UDim2.new(0, X, 0, Y)
-		Ripple.Size = UDim2.new(0, 0, 0, 0)
-		
-		local Size = math.max(AbsSize.X, AbsSize.Y) * 1.5
-		
-		TweenService:Create(Ripple, TweenInfo.new(0.5), {Size = UDim2.new(0, Size, 0, Size), Position = UDim2.new(0, X - Size/2, 0, Y - Size/2), ImageTransparency = 1}):Play()
-		wait(0.5)
-		Ripple:Destroy()
-	end)
+--// 3. UTILITIES
+local function AddGlassEffect(Frame, CornerRadius)
+	Frame.BackgroundColor3 = THEME.GlassColor
+	Frame.BackgroundTransparency = THEME.GlassTransparency
+	Frame.BorderSizePixel = 0
+	
+	local Corner = Instance.new("UICorner")
+	Corner.CornerRadius = UDim.new(0, CornerRadius or 16)
+	Corner.Parent = Frame
+	
+	local Stroke = Instance.new("UIStroke")
+	Stroke.Color = THEME.StrokeColor
+	Stroke.Thickness = 1.5
+	Stroke.Transparency = THEME.StrokeTransparency
+	Stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	Stroke.Parent = Frame
+	
+	local Gradient = Instance.new("UIGradient")
+	Gradient.Rotation = 45
+	Gradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
+		ColorSequenceKeypoint.new(1, Color3.new(1,1,1))
+	}
+	Gradient.Transparency = NumberSequence.new{
+		NumberSequenceKeypoint.new(0, 0.4),
+		NumberSequenceKeypoint.new(0.4, 0.8),
+		NumberSequenceKeypoint.new(1, 0.6)
+	}
+	Gradient.Parent = Frame
 end
 
-local function MakeDraggable(topbarobject, object)
+local function MakeDraggable(Trigger, Object)
 	local Dragging, DragInput, DragStart, StartPosition
-
-	topbarobject.InputBegan:Connect(function(input)
+	Trigger.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			Dragging = true
 			DragStart = input.Position
-			StartPosition = object.Position
+			StartPosition = Object.Position
 			input.Changed:Connect(function()
 				if input.UserInputState == Enum.UserInputState.End then Dragging = false end
 			end)
 		end
 	end)
-
-	topbarobject.InputChanged:Connect(function(input)
+	Trigger.InputChanged:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then DragInput = input end
 	end)
-
 	UserInputService.InputChanged:Connect(function(input)
 		if input == DragInput and Dragging then
 			local Delta = input.Position - DragStart
-			local TargetPos = UDim2.new(StartPosition.X.Scale, StartPosition.X.Offset + Delta.X, StartPosition.Y.Scale, StartPosition.Y.Offset + Delta.Y)
-			-- Smooth Drag
-			TweenService:Create(object, TweenInfo.new(0.05), {Position = TargetPos}):Play()
+			TweenService:Create(Object, TweenInfo.new(0.05), {
+				Position = UDim2.new(StartPosition.X.Scale, StartPosition.X.Offset + Delta.X, StartPosition.Y.Scale, StartPosition.Y.Offset + Delta.Y)
+			}):Play()
 		end
 	end)
 end
 
 function Library:CreateWindow(Settings)
-	-- Cleanup Old UI
 	if UI then UI:Destroy() end
-	for _, v in pairs(GetSafeGuiRoot():GetChildren()) do
-		if v.Name == "CloudLibrary" then v:Destroy() end
-	end
+	for _,v in pairs(GetSafeGuiRoot():GetChildren()) do if v.Name == "ReflectiveCloud" then v:Destroy() end end
 
 	local ScreenGui = Instance.new("ScreenGui")
-	ScreenGui.Name = "CloudLibrary"
-	ScreenGui.IgnoreGuiInset = true
+	ScreenGui.Name = "ReflectiveCloud"
 	ScreenGui.ResetOnSpawn = false
+	ScreenGui.IgnoreGuiInset = true
 	ScreenGui.Parent = GetSafeGuiRoot()
 	UI = ScreenGui
 
-	--// MOBILE OPEN/CLOSE BUTTON (Rayfield Style)
-	local OpenBtn = Instance.new("TextButton")
-	OpenBtn.Name = "OpenButton"
-	OpenBtn.Size = UDim2.new(0, 50, 0, 50)
-	OpenBtn.Position = UDim2.new(0.1, 0, 0.1, 0) -- Top Left area
-	OpenBtn.BackgroundColor3 = THEME.GlassColor
-	OpenBtn.BackgroundTransparency = 0.5
-	OpenBtn.Text = ""
-	OpenBtn.Parent = ScreenGui
+	--// 1. THE RAYFIELD-STYLE TOGGLE (Capsule)
+	-- Starts hidden (Position Y = -100)
+	local ToggleCapsule = Instance.new("TextButton")
+	ToggleCapsule.Name = "ToggleCapsule"
+	ToggleCapsule.Size = UDim2.new(0, 200, 0, 45)
+	ToggleCapsule.Position = UDim2.new(0.5, 0, 0, -100) -- Off screen top
+	ToggleCapsule.AnchorPoint = Vector2.new(0.5, 0)
+	ToggleCapsule.Text = "Open Library"
+	ToggleCapsule.TextColor3 = THEME.TextColor
+	ToggleCapsule.Font = THEME.FontBold
+	ToggleCapsule.TextSize = 16
+	ToggleCapsule.Visible = false -- Initially hidden because UI starts open
+	AddGlassEffect(ToggleCapsule, 100) -- 100 Radius makes it a perfect capsule
+	ToggleCapsule.Parent = ScreenGui
 	
-	local OpenCorner = Instance.new("UICorner")
-	OpenCorner.CornerRadius = UDim.new(1, 0)
-	OpenCorner.Parent = OpenBtn
-	
-	local OpenStroke = Instance.new("UIStroke")
-	OpenStroke.Thickness = 2
-	OpenStroke.Color = THEME.AccentColor
-	OpenStroke.Parent = OpenBtn
-	
-	local OpenIcon = Instance.new("ImageLabel")
-	OpenIcon.Image = "rbxassetid://3926305904" -- Cloud Icon
-	OpenIcon.Size = UDim2.new(0, 30, 0, 30)
-	OpenIcon.Position = UDim2.new(0.5, -15, 0.5, -15)
-	OpenIcon.BackgroundTransparency = 1
-	OpenIcon.ImageColor3 = Color3.new(1,1,1)
-	OpenIcon.Parent = OpenBtn
-	
-	MakeDraggable(OpenBtn, OpenBtn) -- Make the toggle button draggable too!
+	local CloudIcon = Instance.new("ImageLabel")
+	CloudIcon.Image = "rbxassetid://3926305904" -- Cloud Icon
+	CloudIcon.Size = UDim2.new(0, 25, 0, 25)
+	CloudIcon.Position = UDim2.new(0, 15, 0.5, -12.5)
+	CloudIcon.BackgroundTransparency = 1
+	CloudIcon.ImageColor3 = Color3.new(1,1,1)
+	CloudIcon.Parent = ToggleCapsule
 
-	--// MAIN CONTAINER
-	MainFrame = Instance.new("Frame")
-	MainFrame.Name = "MainFrame"
-	MainFrame.Size = UDim2.new(0, 0, 0, 0) -- Start small for animation
-	MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-	MainFrame.AnchorPoint = Vector2.new(0.5, 0.5) -- Center pivot for scaling
-	MainFrame.BackgroundColor3 = THEME.GlassColor
-	MainFrame.BackgroundTransparency = THEME.GlassTransparency
-	MainFrame.ClipsDescendants = true
-	MainFrame.Parent = ScreenGui
+	--// 2. MAIN CONTAINER (Invisible Holder)
+	local Container = Instance.new("Frame")
+	Container.Name = "Container"
+	Container.Size = UDim2.new(0, 650, 0, 400)
+	Container.Position = UDim2.new(0.5, 0, 0.5, 0)
+	Container.AnchorPoint = Vector2.new(0.5, 0.5)
+	Container.BackgroundTransparency = 1
+	Container.Parent = ScreenGui
 
-	local MainCorner = Instance.new("UICorner")
-	MainCorner.CornerRadius = UDim.new(0, 20)
-	MainCorner.Parent = MainFrame
-	
-	local MainStroke = Instance.new("UIStroke")
-	MainStroke.Thickness = 2
-	MainStroke.Color = Color3.new(1,1,1)
-	MainStroke.Transparency = 0.4
-	MainStroke.Parent = MainFrame
+	--// 3. FLOATING ISLANDS
+	local TitleBar = Instance.new("Frame")
+	TitleBar.Name = "TitleBar"
+	TitleBar.Size = UDim2.new(1, 0, 0, 40)
+	TitleBar.Position = UDim2.new(0, 0, 0, -50)
+	AddGlassEffect(TitleBar, 16)
+	TitleBar.Parent = Container
 
-	-- Scale Animation on Open
-	TweenService:Create(MainFrame, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 600, 0, 400)}):Play()
-	MakeDraggable(MainFrame, MainFrame)
-
-	-- Header
-	local Title = Instance.new("TextLabel")
-	Title.Text = Settings.Name or "Cloud UI"
-	Title.Font = THEME.FontBold
-	Title.TextSize = 24
-	Title.TextColor3 = THEME.TextColor
-	Title.Size = UDim2.new(1, -50, 0, 50)
-	Title.Position = UDim2.new(0, 25, 0, 5)
-	Title.BackgroundTransparency = 1
-	Title.TextXAlignment = Enum.TextXAlignment.Left
-	Title.Parent = MainFrame
+	local TitleText = Instance.new("TextLabel")
+	TitleText.Text = Settings.Name or "Cloud Library"
+	TitleText.Font = THEME.FontBold
+	TitleText.TextSize = 22
+	TitleText.TextColor3 = THEME.TextColor
+	TitleText.Size = UDim2.new(1, -50, 1, 0)
+	TitleText.Position = UDim2.new(0, 20, 0, 0)
+	TitleText.BackgroundTransparency = 1
+	TitleText.TextXAlignment = Enum.TextXAlignment.Left
+	TitleText.Parent = TitleBar
 	
 	-- Close Button (X)
 	local CloseBtn = Instance.new("TextButton")
 	CloseBtn.Text = "×"
-	CloseBtn.Font = Enum.Font.Gotham
-	CloseBtn.TextSize = 28
+	CloseBtn.Font = Enum.Font.GothamMedium
+	CloseBtn.TextSize = 24
 	CloseBtn.TextColor3 = THEME.TextColor
 	CloseBtn.BackgroundTransparency = 1
 	CloseBtn.Size = UDim2.new(0, 40, 0, 40)
-	CloseBtn.Position = UDim2.new(1, -45, 0, 10)
-	CloseBtn.Parent = MainFrame
-	
-	-- Toggle Logic
-	local UI_Visible = true
-	
-	local function ToggleUI()
-		UI_Visible = not UI_Visible
-		if UI_Visible then
-			MainFrame.Visible = true
-			TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 600, 0, 400)}):Play()
-			TweenService:Create(OpenBtn, TweenInfo.new(0.4), {BackgroundTransparency = 0.5, Size = UDim2.new(0, 50, 0, 50)}):Play()
-		else
-			TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)}):Play()
-			task.delay(0.4, function() MainFrame.Visible = false end)
-			-- Pulse the open button to show it's active
-			TweenService:Create(OpenBtn, TweenInfo.new(0.4), {BackgroundTransparency = 0.2, Size = UDim2.new(0, 60, 0, 60)}):Play()
-		end
-	end
-	
-	CloseBtn.MouseButton1Click:Connect(ToggleUI)
-	OpenBtn.MouseButton1Click:Connect(ToggleUI)
-	
-	-- Sidebar
-	local Sidebar = Instance.new("Frame")
-	Sidebar.Size = UDim2.new(0, 150, 1, -70)
-	Sidebar.Position = UDim2.new(0, 15, 0, 60)
-	Sidebar.BackgroundColor3 = THEME.SidebarColor
-	Sidebar.BackgroundTransparency = THEME.SidebarTransparency
-	Sidebar.Parent = MainFrame
-	local SideCorner = Instance.new("UICorner"); SideCorner.CornerRadius = UDim.new(0,15); SideCorner.Parent = Sidebar
-	local SideList = Instance.new("UIListLayout"); SideList.Parent = Sidebar; SideList.Padding = UDim.new(0,8); SideList.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	local SidePad = Instance.new("UIPadding"); SidePad.Parent = Sidebar; SidePad.PaddingTop = UDim.new(0,10)
-	
-	-- Content
-	local ContentFrame = Instance.new("Frame")
-	ContentFrame.Size = UDim2.new(1, -180, 1, -70)
-	ContentFrame.Position = UDim2.new(0, 175, 0, 60)
-	ContentFrame.BackgroundColor3 = THEME.SidebarColor
-	ContentFrame.BackgroundTransparency = THEME.SidebarTransparency
-	ContentFrame.Parent = MainFrame
-	local ContentCorner = Instance.new("UICorner"); ContentCorner.CornerRadius = UDim.new(0,15); ContentCorner.Parent = ContentFrame
+	CloseBtn.Position = UDim2.new(1, -40, 0, 0)
+	CloseBtn.Parent = TitleBar
 
-	local Window = {}
-	local Tabs = {}
-	local FirstTab = true
-	
-	function Window:CreateTab(TabSettings)
-		local TabName = TabSettings.Name or "Tab"
+	local Sidebar = Instance.new("Frame")
+	Sidebar.Name = "Sidebar"
+	Sidebar.Size = UDim2.new(0, 160, 1, 0)
+	Sidebar.Position = UDim2.new(0, 0, 0, 0)
+	AddGlassEffect(Sidebar, 16)
+	Sidebar.Parent = Container
+	local SideList = Instance.new("UIListLayout"); SideList.Parent = Sidebar; SideList.Padding = UDim.new(0, 10); SideList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	local SidePad = Instance.new("UIPadding"); SidePad.Parent = Sidebar; SidePad.PaddingTop = UDim.new(0, 15)
+
+	local Content = Instance.new("Frame")
+	Content.Name = "Content"
+	Content.Size = UDim2.new(1, -175, 1, 0)
+	Content.Position = UDim2.new(1, 0, 0, 0)
+	Content.AnchorPoint = Vector2.new(1, 0)
+	AddGlassEffect(Content, 16)
+	Content.Parent = Container
+
+	MakeDraggable(TitleBar, Container)
+
+	--// LOGIC: OPEN / CLOSE
+	local function OpenUI()
+		-- Hide Toggle Button
+		local TweenOut = TweenService:Create(ToggleCapsule, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Position = UDim2.new(0.5, 0, 0, -100)})
+		TweenOut:Play()
+		TweenOut.Completed:Connect(function() ToggleCapsule.Visible = false end)
 		
+		-- Show Main UI
+		Container.Visible = true
+		TweenService:Create(Container, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 650, 0, 400)}):Play()
+		TweenService:Create(TitleBar, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = UDim2.new(0,0,0,-50)}):Play()
+	end
+
+	local function CloseUI()
+		-- Hide Main UI
+		TweenService:Create(Container, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)}):Play()
+		TweenService:Create(TitleBar, TweenInfo.new(0.4), {Position = UDim2.new(0,0,0,0)}):Play()
+		task.delay(0.5, function() Container.Visible = false end)
+		
+		-- Show Toggle Button (Slide Down)
+		ToggleCapsule.Visible = true
+		ToggleCapsule.Position = UDim2.new(0.5, 0, 0, -100) -- Reset pos just in case
+		TweenService:Create(ToggleCapsule, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, 0, 0, 20)}):Play()
+	end
+
+	CloseBtn.MouseButton1Click:Connect(CloseUI)
+	ToggleCapsule.MouseButton1Click:Connect(OpenUI)
+
+	--// TABS & ELEMENTS
+	local Tabs = {}
+	local Window = {}
+	local First = true
+
+	function Window:CreateTab(Name)
 		local TabBtn = Instance.new("TextButton")
 		TabBtn.Size = UDim2.new(0, 130, 0, 35)
-		TabBtn.BackgroundColor3 = THEME.AccentColor
-		TabBtn.BackgroundTransparency = 1
-		TabBtn.Text = TabName
+		TabBtn.Text = Name
 		TabBtn.TextColor3 = THEME.TextColor
 		TabBtn.Font = THEME.Font
 		TabBtn.TextSize = 14
+		TabBtn.BackgroundTransparency = 1
 		TabBtn.Parent = Sidebar
 		
-		local TabCorner = Instance.new("UICorner"); TabCorner.CornerRadius = UDim.new(0,10); TabCorner.Parent = TabBtn
-		
-		local Container = Instance.new("ScrollingFrame")
-		Container.Size = UDim2.new(1, -10, 1, -10)
-		Container.Position = UDim2.new(0, 5, 0, 5)
-		Container.BackgroundTransparency = 1
-		Container.ScrollBarThickness = 2
-		Container.Visible = false
-		Container.Parent = ContentFrame
-		
-		local Layout = Instance.new("UIListLayout"); Layout.Parent = Container; Layout.Padding = UDim.new(0,8); Layout.SortOrder = Enum.SortOrder.LayoutOrder
-		local Pad = Instance.new("UIPadding"); Pad.Parent = Container; Pad.PaddingTop = UDim.new(0,5); Pad.PaddingLeft = UDim.new(0,5)
-		
+		local TabCorner = Instance.new("UICorner"); TabCorner.CornerRadius = UDim.new(0, 8); TabCorner.Parent = TabBtn
+		local Glow = Instance.new("UIStroke"); Glow.Color = THEME.AccentColor; Glow.Thickness = 2; Glow.Transparency = 1; Glow.Parent = TabBtn
+
+		local Page = Instance.new("ScrollingFrame")
+		Page.Name = Name.."Page"
+		Page.Size = UDim2.new(1, -20, 1, -20)
+		Page.Position = UDim2.new(0, 10, 0, 10)
+		Page.BackgroundTransparency = 1
+		Page.ScrollBarThickness = 2
+		Page.ScrollBarImageColor3 = THEME.AccentColor
+		Page.Visible = false
+		Page.Parent = Content
+		local PageLayout = Instance.new("UIListLayout"); PageLayout.Parent = Page; PageLayout.Padding = UDim.new(0, 8)
+
 		TabBtn.MouseButton1Click:Connect(function()
-			for _, t in pairs(Tabs) do
-				TweenService:Create(t.Btn, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
-				t.Container.Visible = false
+			for _, v in pairs(Tabs) do
+				TweenService:Create(v.Glow, TweenInfo.new(0.3), {Transparency = 1}):Play()
+				v.Page.Visible = false
+				v.Btn.BackgroundTransparency = 1
 			end
-			TweenService:Create(TabBtn, TweenInfo.new(0.3), {BackgroundTransparency = 0.5}):Play()
-			Container.Visible = true
-			AddRipple(TabBtn)
+			TweenService:Create(Glow, TweenInfo.new(0.3), {Transparency = 0}):Play()
+			TweenService:Create(TabBtn, TweenInfo.new(0.3), {BackgroundTransparency = 0.8}):Play()
+			Page.Visible = true
 		end)
-		
-		if FirstTab then
-			FirstTab = false
-			TabBtn.BackgroundTransparency = 0.5
-			Container.Visible = true
+
+		if First then
+			First = false
+			TabBtn.BackgroundTransparency = 0.8
+			Glow.Transparency = 0
+			Page.Visible = true
 		end
-		table.insert(Tabs, {Btn = TabBtn, Container = Container})
+		table.insert(Tabs, {Btn = TabBtn, Glow = Glow, Page = Page})
 
 		local Elements = {}
-
-		function Elements:CreateButton(Settings)
+		
+		function Elements:CreateButton(Name, Callback)
 			local Btn = Instance.new("TextButton")
 			Btn.Size = UDim2.new(1, -10, 0, 40)
-			Btn.BackgroundColor3 = THEME.ElementColor
-			Btn.BackgroundTransparency = THEME.ElementTransparency
-			Btn.Text = Settings.Name
-			Btn.TextColor3 = THEME.TextColor
-			Btn.Font = THEME.Font
-			Btn.TextSize = 14
-			Btn.Parent = Container
-			
-			local Corner = Instance.new("UICorner"); Corner.CornerRadius = UDim.new(0,8); Corner.Parent = Btn
-			local Stroke = Instance.new("UIStroke"); Stroke.Color = THEME.AccentColor; Stroke.Thickness = 1; Stroke.Transparency = 1; Stroke.Parent = Btn
-			
+			Btn.Text = Name; Btn.TextColor3 = THEME.TextColor; Btn.Font = THEME.Font; Btn.TextSize = 14; Btn.Parent = Page
+			AddGlassEffect(Btn); Btn.BackgroundTransparency = 0.8
 			Btn.MouseButton1Click:Connect(function()
-				AddRipple(Btn)
-				pcall(Settings.Callback)
-			end)
-			
-			Btn.MouseEnter:Connect(function() TweenService:Create(Stroke, TweenInfo.new(0.2), {Transparency = 0}):Play() end)
-			Btn.MouseLeave:Connect(function() TweenService:Create(Stroke, TweenInfo.new(0.2), {Transparency = 1}):Play() end)
-		end
-		
-		function Elements:CreateToggle(Settings)
-			local ToggleFrame = Instance.new("TextButton") -- Used button for click whole area
-			ToggleFrame.Size = UDim2.new(1, -10, 0, 40)
-			ToggleFrame.BackgroundTransparency = 1
-			ToggleFrame.Text = ""
-			ToggleFrame.Parent = Container
-			
-			local Label = Instance.new("TextLabel")
-			Label.Text = Settings.Name
-			Label.Font = THEME.Font
-			Label.TextColor3 = THEME.TextColor
-			Label.TextSize = 14
-			Label.Size = UDim2.new(0.7, 0, 1, 0)
-			Label.BackgroundTransparency = 1
-			Label.TextXAlignment = Enum.TextXAlignment.Left
-			Label.Position = UDim2.new(0,5,0,0)
-			Label.Parent = ToggleFrame
-			
-			local Switch = Instance.new("Frame")
-			Switch.Size = UDim2.new(0, 45, 0, 24)
-			Switch.Position = UDim2.new(1, -50, 0.5, -12)
-			Switch.BackgroundColor3 = Color3.new(1,1,1)
-			Switch.BackgroundTransparency = 0.8
-			Switch.Parent = ToggleFrame
-			local SC = Instance.new("UICorner"); SC.CornerRadius = UDim.new(1,0); SC.Parent = Switch
-			
-			local Knob = Instance.new("Frame")
-			Knob.Size = UDim2.new(0, 20, 0, 20)
-			Knob.Position = UDim2.new(0, 2, 0.5, -10)
-			Knob.BackgroundColor3 = Color3.new(1,1,1)
-			Knob.Parent = Switch
-			local KC = Instance.new("UICorner"); KC.CornerRadius = UDim.new(1,0); KC.Parent = Knob
-			
-			local Toggled = Settings.CurrentValue or false
-			
-			local function Update()
-				if Toggled then
-					TweenService:Create(Knob, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Position = UDim2.new(1, -22, 0.5, -10)}):Play()
-					TweenService:Create(Switch, TweenInfo.new(0.2), {BackgroundColor3 = THEME.AccentColor, BackgroundTransparency = 0.4}):Play()
-				else
-					TweenService:Create(Knob, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Position = UDim2.new(0, 2, 0.5, -10)}):Play()
-					TweenService:Create(Switch, TweenInfo.new(0.2), {BackgroundColor3 = Color3.new(1,1,1), BackgroundTransparency = 0.8}):Play()
-				end
-				pcall(Settings.Callback, Toggled)
-			end
-			Update()
-			
-			ToggleFrame.MouseButton1Click:Connect(function()
-				Toggled = not Toggled
-				Update()
+				TweenService:Create(Btn, TweenInfo.new(0.1), {Size = UDim2.new(1, -15, 0, 38)}):Play()
+				task.wait(0.1)
+				TweenService:Create(Btn, TweenInfo.new(0.1), {Size = UDim2.new(1, -10, 0, 40)}):Play()
+				pcall(Callback)
 			end)
 		end
 		
-		function Elements:CreateSlider(Settings)
-			local SliderFrame = Instance.new("Frame")
-			SliderFrame.Size = UDim2.new(1, -10, 0, 50)
-			SliderFrame.BackgroundTransparency = 1
-			SliderFrame.Parent = Container
-			
-			local Label = Instance.new("TextLabel")
-			Label.Text = Settings.Name
-			Label.Font = THEME.Font
-			Label.TextColor3 = THEME.TextColor
-			Label.Size = UDim2.new(1,0,0,20)
-			Label.BackgroundTransparency = 1
-			Label.TextXAlignment = Enum.TextXAlignment.Left
-			Label.Position = UDim2.new(0,5,0,0)
-			Label.Parent = SliderFrame
-			
-			local ValLabel = Instance.new("TextLabel")
-			ValLabel.Text = Settings.CurrentValue or Settings.Range[1]
-			ValLabel.Font = THEME.Font
-			ValLabel.TextColor3 = THEME.TextColor
-			ValLabel.Size = UDim2.new(0,50,0,20)
-			ValLabel.Position = UDim2.new(1,-55,0,0)
-			ValLabel.BackgroundTransparency = 1
-			ValLabel.TextXAlignment = Enum.TextXAlignment.Right
-			ValLabel.Parent = SliderFrame
-			
-			local Bar = Instance.new("Frame")
-			Bar.Size = UDim2.new(1, -10, 0, 4)
-			Bar.Position = UDim2.new(0, 5, 0, 35)
-			Bar.BackgroundColor3 = Color3.new(1,1,1)
-			Bar.BackgroundTransparency = 0.8
-			Bar.Parent = SliderFrame
-			local BC = Instance.new("UICorner"); BC.CornerRadius = UDim.new(1,0); BC.Parent = Bar
-			
-			local Fill = Instance.new("Frame")
-			Fill.Size = UDim2.new(0,0,1,0)
-			Fill.BackgroundColor3 = THEME.AccentColor
-			Fill.BackgroundTransparency = 0.2
-			Fill.Parent = Bar
-			local FC = Instance.new("UICorner"); FC.CornerRadius = UDim.new(1,0); FC.Parent = Fill
-			
-			local Knob = Instance.new("Frame")
-			Knob.Size = UDim2.new(0,14,0,14)
-			Knob.AnchorPoint = Vector2.new(0.5,0.5)
-			Knob.Position = UDim2.new(1,0,0.5,0)
-			Knob.BackgroundColor3 = Color3.new(1,1,1)
-			Knob.Parent = Fill
-			local KNC = Instance.new("UICorner"); KNC.CornerRadius = UDim.new(1,0); KNC.Parent = Knob
-			
-			local Dragging = false
-			local Min, Max = Settings.Range[1], Settings.Range[2]
-			
+		function Elements:CreateToggle(Name, Callback)
+			local TogFrame = Instance.new("Frame"); TogFrame.Size = UDim2.new(1, -10, 0, 40); TogFrame.Parent = Page
+			AddGlassEffect(TogFrame); TogFrame.BackgroundTransparency = 0.8
+			local Label = Instance.new("TextLabel"); Label.Size = UDim2.new(0.7, 0, 1, 0); Label.Position = UDim2.new(0, 10, 0, 0); Label.BackgroundTransparency = 1; Label.Text = Name; Label.TextColor3 = THEME.TextColor; Label.Font = THEME.Font; Label.TextXAlignment = Enum.TextXAlignment.Left; Label.Parent = TogFrame
+			local Switch = Instance.new("TextButton"); Switch.Size = UDim2.new(0, 44, 0, 22); Switch.Position = UDim2.new(1, -54, 0.5, -11); Switch.Text = ""; Switch.BackgroundColor3 = Color3.fromRGB(50, 50, 50); Switch.BackgroundTransparency = 0.5; Switch.Parent = TogFrame; Instance.new("UICorner", Switch).CornerRadius = UDim.new(1,0)
+			local Knob = Instance.new("Frame"); Knob.Size = UDim2.new(0, 18, 0, 18); Knob.Position = UDim2.new(0, 2, 0.5, -9); Knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255); Knob.Parent = Switch; Instance.new("UICorner", Knob).CornerRadius = UDim.new(1,0)
+			local On = false
+			Switch.MouseButton1Click:Connect(function()
+				On = not On
+				TweenService:Create(Knob, TweenInfo.new(0.3, Enum.EasingStyle.Back), {Position = On and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)}):Play()
+				TweenService:Create(Switch, TweenInfo.new(0.3), {BackgroundColor3 = On and THEME.AccentColor or Color3.fromRGB(50, 50, 50)}):Play()
+				pcall(Callback, On)
+			end)
+		end
+		
+		function Elements:CreateSlider(Name, Range, Callback)
+			local SliderFrame = Instance.new("Frame"); SliderFrame.Size = UDim2.new(1, -10, 0, 50); SliderFrame.Parent = Page; AddGlassEffect(SliderFrame); SliderFrame.BackgroundTransparency = 0.8
+			local Label = Instance.new("TextLabel"); Label.Text = Name; Label.TextColor3 = THEME.TextColor; Label.Font = THEME.Font; Label.Size = UDim2.new(1, -20, 0, 20); Label.Position = UDim2.new(0, 10, 0, 5); Label.BackgroundTransparency = 1; Label.TextXAlignment = Enum.TextXAlignment.Left; Label.Parent = SliderFrame
+			local Bar = Instance.new("Frame"); Bar.Size = UDim2.new(1, -20, 0, 4); Bar.Position = UDim2.new(0, 10, 0, 35); Bar.BackgroundColor3 = Color3.new(1,1,1); Bar.BackgroundTransparency = 0.7; Bar.Parent = SliderFrame; Instance.new("UICorner", Bar).CornerRadius = UDim.new(1,0)
+			local Fill = Instance.new("Frame"); Fill.Size = UDim2.new(0, 0, 1, 0); Fill.BackgroundColor3 = THEME.AccentColor; Fill.Parent = Bar; Instance.new("UICorner", Fill).CornerRadius = UDim.new(1,0)
+			local Knob = Instance.new("Frame"); Knob.Size = UDim2.new(0, 14, 0, 14); Knob.Position = UDim2.new(1, 0, 0.5, 0); Knob.AnchorPoint = Vector2.new(0.5, 0.5); Knob.BackgroundColor3 = Color3.new(1,1,1); Knob.Parent = Fill; Instance.new("UICorner", Knob).CornerRadius = UDim.new(1,0)
+			local Min, Max = Range[1], Range[2]; local Dragging = false
 			local function Update(Input)
 				local SizeX = math.clamp((Input.Position.X - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1)
-				local Value = math.floor(Min + ((Max - Min) * SizeX))
-				ValLabel.Text = Value
 				TweenService:Create(Fill, TweenInfo.new(0.1), {Size = UDim2.new(SizeX, 0, 1, 0)}):Play()
-				pcall(Settings.Callback, Value)
+				pcall(Callback, math.floor(Min + ((Max - Min) * SizeX)))
 			end
-			
-			Bar.InputBegan:Connect(function(Input) 
-				if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then 
-					Dragging = true; Update(Input) 
-				end 
-			end)
-			UserInputService.InputEnded:Connect(function(Input) 
-				if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then 
-					Dragging = false 
-				end 
-			end)
-			UserInputService.InputChanged:Connect(function(Input) 
-				if Dragging and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then 
-					Update(Input) 
-				end 
-			end)
+			Bar.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then Dragging = true; Update(i) end end)
+			UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then Dragging = false end end)
+			UserInputService.InputChanged:Connect(function(i) if Dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then Update(i) end end)
 		end
-		
+
 		return Elements
 	end
-	
 	return Window
 end
-
 return Library
